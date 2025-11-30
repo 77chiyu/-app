@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>哆啦A夢的夢境手帳</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- 變數定義 --- */
+        :root {
+            --dora-blue: #00a0e9;
+            --dora-pink: #e73b2a;
+            --dora-yellow: #fce205;
+            --text-color: #5d4037;
+            --bg-color: #e0f2fe;
+            --card-bg: #ffffff;
+            --card-border: #ffffff;
+            --input-bg: #fafafa;
+            --overlay-color: rgba(255, 255, 255, 0.7);
+            --shadow-color: rgba(0,160,233, 0.1);
+        }
+
+        [data-theme="dark"] {
+            --dora-blue: #4fc3f7;
+            --dora-pink: #ff6b6b;
+            --dora-yellow: #fdd835;
+            --text-color: #e0e0e0;
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --card-border: #334155;
+            --input-bg: #334155;
+            --overlay-color: rgba(15, 23, 42, 0.8);
+            --shadow-color: rgba(0,0,0, 0.5);
+        }
+
+        body {
+            font-family: 'Zen Maru Gothic', sans-serif;
+            margin: 0; padding: 0;
+            color: var(--text-color);
+            background-color: var(--bg-color);
+            background-image: url('img_bg.jpg');
+            background-size: 300px; background-repeat: repeat;
+            min-height: 100vh;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        .bg-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--overlay-color);
+            backdrop-filter: blur(3px); z-index: -1;
+            transition: background 0.5s ease;
+        }
+
+        /* 導覽列 */
+        .navbar {
+            background: var(--card-bg); padding: 15px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: sticky; top: 0; z-index: 100;
+            border-bottom: 4px solid var(--dora-blue);
+            transition: background 0.5s ease;
+        }
+        .menu-icon { width: 30px; height: 20px; position: relative; cursor: pointer; }
+        .menu-icon span {
+            display: block; position: absolute; height: 3px; width: 100%;
+            background: var(--dora-blue); border-radius: 9px; left: 0;
+            transition: .25s ease-in-out;
+        }
+        .menu-icon span:nth-child(1) { top: 0px; }
+        .menu-icon span:nth-child(2) { top: 9px; }
+        .menu-icon span:nth-child(3) { top: 18px; }
+        .nav-title { font-weight: 700; font-size: 1.1rem; color: var(--dora-blue); letter-spacing: 1px; }
+
+        /* 夜間開關 (純文字) */
+        .theme-switch {
+            position: fixed; bottom: 20px; right: 20px;
+            width: 50px; height: 50px; border-radius: 50%;
+            background: var(--dora-yellow);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1rem; font-weight: bold; color: #5d4037;
+            cursor: pointer; z-index: 900;
+            border: 3px solid var(--text-color);
+            transition: transform 0.2s;
+        }
+        .theme-switch:active { transform: scale(0.9); }
+
+        /* 側邊欄 */
+        .sidebar {
+            height: 100%; width: 260px; position: fixed; top: 0; left: -270px;
+            background: var(--card-bg); z-index: 200; transition: 0.4s;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.2); padding-top: 30px;
+            border-right: 6px solid var(--dora-yellow);
+        }
+        .sidebar.active { left: 0; }
+        .sidebar-header { text-align: center; margin-bottom: 30px; }
+        .avatar-crop {
+            width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--dora-blue);
+            margin: 0 auto 10px auto; overflow: hidden; background: #fff;
+        }
+        .avatar-crop img { width: 100%; height: 100%; object-fit: cover; }
+        .nav-item {
+            display: block; padding: 15px 30px; margin: 5px 15px;
+            text-decoration: none; color: var(--text-color); font-weight: 700;
+            border-radius: 10px; transition: 0.2s; border-left: 5px solid transparent;
+        }
+        .nav-item:hover, .nav-item.active-link { 
+            background: var(--input-bg); color: var(--dora-blue); border-left-color: var(--dora-blue);
+        }
+        .overlay-click { display: none; position: fixed; top:0; left:0; width:100%; height:100%; z-index:150; background:rgba(0,0,0,0.3); }
+        .overlay-click.active { display: block; }
+
+        /* 容器與元件 */
+        .container { max-width: 500px; margin: 0 auto; padding: 20px; display: none; animation: fadeIn 0.4s ease; }
+        .container.active { display: block; }
+        @keyframes fadeIn { from {opacity:0; transform: translateY(10px);} to {opacity:1; transform: translateY(0);} }
+
+        .top-banner { text-align: center; margin-top: -10px; margin-bottom: 25px; }
+        .top-banner img { width: 100%; max-width: 280px; height: auto; filter: drop-shadow(0 5px 8px var(--shadow-color)); }
+
+        .card {
+            background: var(--card-bg); border-radius: 20px; padding: 25px; margin-bottom: 25px;
+            box-shadow: 0 5px 20px var(--shadow-color); border: 2px solid var(--card-border);
+            position: relative; overflow: hidden; transition: background 0.5s;
+        }
+        h2 { 
+            margin-top: 0; color: var(--dora-blue); font-size: 1.2rem; 
+            border-bottom: 2px dashed rgba(0,0,0,0.1); padding-bottom: 10px; margin-bottom: 15px;
+        }
+        [data-theme="dark"] h2 { border-color: rgba(255,255,255,0.1); }
+        .small-desc { font-size: 0.9rem; color: #888; margin-bottom: 10px; line-height: 1.5; }
+        .card-thumb { width: 100%; height: 120px; object-fit: cover; object-position: center; border-radius: 10px; margin-bottom: 15px; }
+        .card-thumb.contain { object-fit: contain; background: var(--input-bg); }
+
+        input, textarea {
+            width: 100%; padding: 12px; border: 2px solid var(--card-border);
+            border-radius: 12px; font-size: 1rem; font-family: 'Zen Maru Gothic';
+            box-sizing: border-box; background: var(--input-bg); outline: none; margin: 5px 0; color: var(--text-color);
+            transition: background 0.5s;
+        }
+        input:focus { border-color: var(--dora-blue); }
+
+        button {
+            width: 100%; padding: 12px; border: none; border-radius: 50px;
+            font-size: 1rem; font-weight: 700; cursor: pointer; margin-top: 10px;
+            font-family: 'Zen Maru Gothic'; color: white; transition: 0.2s;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+        }
+        button:active { transform: translateY(3px); box-shadow: none; }
+        .btn-blue { background: var(--dora-blue); }
+        .btn-green { background: #2ecc71; } 
+        .btn-pink { background: var(--dora-pink); }
+        .btn-yellow { background: var(--dora-yellow); color: #5d4037; }
+        .btn-group { display: flex; gap: 8px; margin-top: 10px; }
+        .btn-group button { margin-top: 0; font-size: 0.9rem; padding: 10px; }
+
+        .result-box {
+            margin-top: 20px; padding: 15px; background: var(--input-bg);
+            border-radius: 12px; border: 2px solid var(--dora-blue);
+            color: var(--text-color); display: none; text-align: center; font-weight: bold;
+        }
+        .time-tag {
+            display: inline-block; background: var(--dora-yellow); color: #5d4037;
+            padding: 5px 12px; border-radius: 20px; margin: 4px; font-size: 0.95rem;
+        }
+
+        /* 花園樣式 */
+        .garden-area {
+            text-align: center; min-height: 300px;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            position: relative;
+        }
+        .flower-pot {
+            width: 200px; height: 250px; position: relative;
+            display: flex; align-items: flex-end; justify-content: center;
+        }
+        .flower-img {
+            max-width: 100%; max-height: 100%;
+            filter: drop-shadow(0 5px 10px rgba(0,0,0,0.2));
+            transition: all 0.5s ease;
+        }
+        [data-theme="dark"] .flower-img {
+            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.2));
+        }
+
+        /* 澆水動畫 */
+        .water-can {
+            position: absolute; top: 0; right: 0; width: 80px; display: none; z-index: 50;
+        }
+        .watering .water-can {
+            display: block;
+            animation: pourWater 2s ease-in-out forwards;
+        }
+        @keyframes pourWater {
+            0% { transform: rotate(0deg) translate(0, 0); opacity: 0; }
+            20% { transform: rotate(-30deg) translate(-40px, 20px); opacity: 1; }
+            80% { transform: rotate(-30deg) translate(-40px, 20px); opacity: 1; }
+            100% { transform: rotate(0deg) translate(0, 0); opacity: 0; }
+        }
+
+        .growth-bar {
+            width: 100%; height: 10px; background: #eee; border-radius: 5px;
+            margin-top: 20px; overflow: hidden;
+        }
+        .growth-fill {
+            height: 100%; background: var(--dora-green); width: 0%;
+            transition: width 0.5s; background: #2ecc71;
+        }
+        
+        .flower-select {
+            display: flex; gap: 5px; margin-top: 20px; justify-content: center; flex-wrap: wrap;
+        }
+        .flower-option {
+            padding: 8px 12px; border: 2px solid #ddd; border-radius: 20px;
+            cursor: pointer; font-size: 0.85rem; color: #aaa;
+        }
+        .flower-option.active {
+            border-color: var(--dora-blue); color: var(--dora-blue); font-weight: bold; background: var(--input-bg);
+        }
+        .flower-option.locked {
+            opacity: 0.5; cursor: not-allowed;
+        }
+
+        /* 紀錄列表 */
+        .history-list { list-style: none; padding: 0; }
+        .history-item {
+            background: var(--card-bg); margin-bottom: 15px; padding: 20px;
+            border-radius: 15px; border-left: 8px solid var(--dora-blue);
+            box-shadow: 2px 2px 10px var(--shadow-color); position: relative; border: 1px solid var(--card-border);
+        }
+        .del-btn { position: absolute; top: 15px; right: 15px; width: 25px; height: 25px; border-radius: 50%; background: var(--input-bg); color: #999; border: none; }
+        .date-badge {
+            display: inline-block; background: var(--input-bg); padding: 3px 10px; 
+            border-radius: 5px; font-size: 0.8rem; margin-bottom: 8px; color: var(--text-color);
+        }
+        .data-row { display: flex; justify-content: space-between; margin-top: 5px; }
+        .label { color: #888; font-size: 0.8rem; margin-right: 5px; }
+
+        /* 日記 */
+        .diary-paper {
+            background: var(--card-bg); background-image: radial-gradient(var(--card-border) 1px, transparent 1px);
+            background-size: 20px 20px; padding: 25px; border-radius: 5px;
+            box-shadow: 0 5px 10px var(--shadow-color); margin-bottom: 20px; border-top: 10px solid var(--dora-blue);
+        }
+        .diary-img { width: 100%; border-radius: 8px; margin-top: 15px; }
+
+    </style>
+</head>
+<body>
+    <div class="bg-overlay"></div>
+
+    <div class="theme-switch" onclick="toggleTheme()">
+        <span id="themeIcon">日</span>
+    </div>
+
+    <!-- 導覽列 -->
+    <div class="navbar">
+        <div class="menu-icon" onclick="toggleMenu()">
+            <span></span><span></span><span></span>
+        </div>
+        <div class="nav-title" id="navTitle">任意門</div>
+        <div style="width:30px;"></div>
+    </div>
+
+    <!-- 側邊選單 -->
+    <div class="overlay-click" onclick="toggleMenu()"></div>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="avatar-crop"><img src="img_circle.jpg"></div>
+            <h3 style="color:var(--text-color); margin:0;">百寶袋選單</h3>
+        </div>
+        <a href="#" class="nav-item active-link" onclick="goPage('home', this)">睡眠道具屋</a>
+        <a href="#" class="nav-item" onclick="goPage('garden', this)">秘密花園</a>
+        <a href="#" class="nav-item" onclick="goPage('history', this)">夢境紀錄書</a>
+        <a href="#" class="nav-item" onclick="goPage('diary', this)">心情日記本</a>
+    </div>
+
+    <!-- 頁面 1: 首頁 -->
+    <div id="home" class="container active">
+        <div class="top-banner"><img src="img_header.jpg"></div>
+
+        <div class="card" style="border-top: 5px solid #2ecc71;">
+            <h2>如果電話亭：分段睡眠</h2>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <label style="color:#888;">起床時間</label>
+                <input type="time" id="splitWake" value="07:30">
+            </div>
+            <button class="btn-green" onclick="calcSplit()">計算入睡時間</button>
+            <div id="resSplit" class="result-box"></div>
+        </div>
+
+        <div class="card" style="border-top: 5px solid var(--dora-pink);">
+            <img src="img_doors.jpg" class="card-thumb contain">
+            <h2>任意門：現在去睡</h2>
+            <div class="btn-group">
+                <button class="btn-pink" onclick="calcNow(5)">5 分鐘</button>
+                <button class="btn-pink" onclick="calcNow(15)">15 分鐘</button>
+                <button class="btn-pink" onclick="calcNow(25)">25 分鐘</button>
+            </div>
+            <div id="resNow" class="result-box"></div>
+        </div>
+
+        <div class="card">
+            <h2>快速存入紀錄</h2>
+            <p class="small-desc">存檔後會自動幫你的花澆水喔！</p>
+            <div style="display:flex; gap:10px;">
+                <input type="time" id="t1" value="23:00">
+                <input type="time" id="t2" value="07:00">
+            </div>
+            <button class="btn-blue" onclick="quickSave()">存檔並澆水</button>
+        </div>
+    </div>
+
+    <!-- 頁面 2: 秘密花園 -->
+    <div id="garden" class="container">
+        <div class="card" style="border-top: 5px solid var(--dora-yellow); min-height:400px;">
+            <h2>我的夢境花園</h2>
+            <p class="small-desc" style="text-align:center;">累積睡眠紀錄讓花長大！</p>
+            
+            <div class="flower-select">
+                <div id="sel_1" class="flower-option active" onclick="changeFlower(1)">向日葵</div>
+                <div id="sel_2" class="flower-option locked" onclick="changeFlower(2)">紅玫瑰</div>
+                <div id="sel_3" class="flower-option locked" onclick="changeFlower(3)">粉玫瑰</div>
+            </div>
+
+            <div class="garden-area" id="gardenArea">
+                <img src="img_watercan.png" class="water-can">
+                <div class="flower-pot">
+                    <!-- 預設顯示 -->
+                    <img src="" id="currentFlowerImg" class="flower-img">
+                </div>
+            </div>
+            
+            <div style="text-align:center; margin-top:10px;">
+                <span id="growthText" style="color:var(--dora-blue); font-weight:bold;"></span>
+            </div>
+            <div class="growth-bar">
+                <div class="growth-fill" id="growthBar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 頁面 3: 紀錄書 -->
+    <div id="history" class="container">
+        <img src="img_icons.jpg" class="card-thumb" style="height:100px;">
+        <div style="background:var(--card-bg); padding:15px; border-radius:12px; margin-bottom:20px; display:flex; gap:10px; align-items:center; border:1px solid var(--card-border);">
+            <span style="font-weight:bold; font-size:0.9rem;">查詢日期</span>
+            <input type="date" id="filterDate" onchange="renderHistory()" style="margin:0;">
+        </div>
+        <ul id="historyList" class="history-list"></ul>
+        <div style="text-align:center; margin-top:20px;">
+            <button onclick="clearAllRecs()" style="background:transparent; color:#999; border:1px solid #ddd; width:auto; padding:8px 20px; font-size:0.8rem; box-shadow:none;">清除所有紀錄</button>
+        </div>
+    </div>
+
+    <!-- 頁面 4: 日記本 -->
+    <div id="diary" class="container">
+        <div class="card">
+            <h2>撰寫日記</h2>
+            <input type="date" id="dDate">
+            <textarea id="dText" rows="5" placeholder="今天睡得好嗎？" style="background:var(--input-bg);"></textarea>
+            <label style="display:block; margin-top:15px; color:var(--dora-blue); cursor:pointer; text-align:center; border:2px dashed var(--dora-blue); padding:10px; border-radius:10px;">
+                上傳照片
+                <input type="file" id="dImg" accept="image/*" style="display:none;" onchange="previewFile()">
+            </label>
+            <img id="dPreview" style="width:100%; border-radius:10px; margin-top:10px; display:none;">
+            <button class="btn-blue" onclick="saveDiary()">保存日記</button>
+        </div>
+        <div id="diaryList"></div>
+    </div>
+
+    <script>
+        // ==========================================
+        //  圖片設定區 (已依照你的檔名設定)
+        // ==========================================
+        const FLOWER_CONFIG = {
+            1: { // 向日葵
+                stage1: 'flower_1_1.png', 
+                stage2: 'flower_1_2.png',
+                stage3: 'flower_1_3.png'
+            },
+            2: { // 紅玫瑰 (因為沒有幼苗圖，所以先借用向日葵的，長大才變玫瑰)
+                stage1: 'flower_1_1.png', // 借用幼苗
+                stage2: 'flower_1_2.png', // 借用成長中
+                stage3: 'flower_2_3.png'  // 紅玫瑰盛開圖
+            },
+            3: { // 粉玫瑰 (同上，先借用向日葵幼苗)
+                stage1: 'flower_1_1.png', // 借用幼苗
+                stage2: 'flower_1_2.png', // 借用成長中
+                stage3: 'flower_2_4.png'  // 粉玫瑰盛開圖
+            }
+        };
+
+        // --- 初始化 ---
+        document.getElementById('dDate').valueAsDate = new Date();
+        if(localStorage.getItem('theme') === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.getElementById('themeIcon').innerText = '夜';
+        }
+        
+        let gardenData = JSON.parse(localStorage.getItem('doraGarden')) || { type: 1, exp: 0, unlocked: 1 };
+        updateGardenUI();
+        renderHistory(); renderDiary();
+
+        // --- 花園系統 ---
+        function updateGardenUI() {
+            // 設定選單 (1:向日葵, 2:紅玫瑰, 3:粉玫瑰)
+            for(let i=1; i<=3; i++) {
+                let el = document.getElementById('sel_'+i);
+                if(i <= gardenData.unlocked) {
+                    el.className = gardenData.type === i ? 'flower-option active' : 'flower-option';
+                    el.classList.remove('locked');
+                } else {
+                    el.className = 'flower-option locked';
+                }
+            }
+
+            // 計算階段
+            let stageKey = 'stage1';
+            let label = "幼苗";
+            let percent = 20;
+
+            if (gardenData.exp >= 6) {
+                stageKey = 'stage3'; percent = 100; label = "盛開";
+                // 自動解鎖下一種花
+                if(gardenData.unlocked < 3 && gardenData.type === gardenData.unlocked) {
+                    gardenData.unlocked += 1;
+                    localStorage.setItem('doraGarden', JSON.stringify(gardenData));
+                    setTimeout(() => { alert("恭喜花開了！獲得新種子！"); updateGardenUI(); }, 500);
+                }
+            } else if (gardenData.exp >= 3) {
+                stageKey = 'stage2'; percent = 60; label = "成長中";
+            } else {
+                stageKey = 'stage1'; percent = 20; label = "幼苗";
+            }
+
+            // 讀取設定好的圖片
+            let imgSrc = FLOWER_CONFIG[gardenData.type][stageKey];
+            document.getElementById('currentFlowerImg').src = imgSrc;
+            document.getElementById('growthText').innerText = `成長進度：${label} (累積 ${gardenData.exp} 筆紀錄)`;
+            document.getElementById('growthBar').style.width = percent + "%";
+        }
+
+        function triggerWatering() {
+            gardenData.exp += 1;
+            localStorage.setItem('doraGarden', JSON.stringify(gardenData));
+            goPage('garden', document.querySelectorAll('.nav-item')[1]);
+            
+            let area = document.getElementById('gardenArea');
+            area.classList.remove('watering');
+            void area.offsetWidth; 
+            area.classList.add('watering');
+            
+            setTimeout(updateGardenUI, 1000);
+        }
+
+        function changeFlower(type) {
+            if(type > gardenData.unlocked) return alert("請先種完上一種花！");
+            if(type !== gardenData.type) {
+                if(confirm("要換種這盆花嗎？(如果是沒種過的花，要從頭開始喔)")) {
+                    gardenData.type = type;
+                    // 如果切換回舊的花，若已滿級則維持滿級，否則歸零(簡易邏輯)
+                    if(gardenData.exp < 6) gardenData.exp = 0;
+                    // 如果這種花已經解鎖了下一種，代表它應該要是盛開狀態
+                    if(type < gardenData.unlocked) gardenData.exp = 6;
+
+                    localStorage.setItem('doraGarden', JSON.stringify(gardenData));
+                    updateGardenUI();
+                }
+            }
+        }
+
+        // --- 存檔 (整合澆水) ---
+        function quickSave() {
+            let t1 = document.getElementById('t1').value; let t2 = document.getElementById('t2').value;
+            let recs = JSON.parse(localStorage.getItem('doraRecs')) || [];
+            recs.unshift({id:Date.now(), date:new Date().toISOString().split('T')[0], t1, t2});
+            localStorage.setItem('doraRecs', JSON.stringify(recs));
+            triggerWatering();
+        }
+
+        // --- 基本功能 ---
+        function toggleTheme() {
+            let current = document.documentElement.getAttribute('data-theme');
+            let icon = document.getElementById('themeIcon');
+            if (current === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light'); icon.innerText = '日';
+            } else {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark'); icon.innerText = '夜';
+            }
+        }
+        function toggleMenu() { document.querySelector('.sidebar').classList.toggle('active'); document.querySelector('.overlay-click').classList.toggle('active'); }
+        function goPage(pid, btn) {
+            document.querySelectorAll('.container').forEach(e => e.classList.remove('active'));
+            document.getElementById(pid).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active-link'));
+            btn.classList.add('active-link');
+            let titles = {'home':'睡眠道具屋', 'garden':'秘密花園', 'history':'夢境紀錄書', 'diary':'心情日記本'};
+            document.getElementById('navTitle').innerText = titles[pid];
+            toggleMenu();
+        }
+        function fmt(d) { return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); }
+        function calcSplit() {
+            let s = document.getElementById('splitWake').value; if(!s) return;
+            let t = new Date(); let [h,m] = s.split(':'); t.setHours(h,m,0);
+            if(t < new Date()) t.setDate(t.getDate()+1);
+            let html = ""; [5, 4, 3].forEach(c => { let slp = new Date(t.getTime() - c*90*60000 - 15*60000); html += `<div style="margin:8px 0; border-bottom:1px solid #eee; padding-bottom:5px;">睡 ${c*1.5} 小時 <span style="float:right; color:var(--dora-blue);">${fmt(slp)} 入睡</span></div>`; });
+            document.getElementById('resSplit').innerHTML = `<div style="text-align:left;">${html}</div>`; document.getElementById('resSplit').style.display = 'block';
+        }
+        function calcNow(delay) {
+            let n = new Date(); n.setMinutes(n.getMinutes() + delay);
+            let html = ""; for(let i=4; i<=6; i++) { let w = new Date(n.getTime() + i*90*60000); html += `<span class="time-tag">${fmt(w)}</span>`; }
+            document.getElementById('resNow').innerHTML = `<div>${delay} 分鐘後入睡</div><div style="margin-top:5px; color:#666; font-size:0.9rem;">建議起床時間</div><div style="margin-top:10px;">${html}</div>`; document.getElementById('resNow').style.display = 'block';
+        }
+        function renderHistory() {
+            let recs = JSON.parse(localStorage.getItem('doraRecs')) || [];
+            let f = document.getElementById('filterDate').value;
+            let ul = document.getElementById('historyList'); ul.innerHTML = "";
+            let show = f ? recs.filter(r => r.date === f) : recs;
+            if(show.length === 0) { ul.innerHTML = "<div style='text-align:center; color:#999; padding:20px;'>這裡空空的，快去睡覺吧！</div>"; return;}
+            show.forEach(r => { ul.innerHTML += `<li class="history-item"><span class="date-badge">${r.date}</span><button class="del-btn" onclick="delRec(${r.id})">×</button><div class="data-row"><div><span class="label">入睡</span> <b>${r.t1}</b></div><div><span class="label">起床</span> <b>${r.t2}</b></div></div></li>`; });
+        }
+        function delRec(id) { let recs = JSON.parse(localStorage.getItem('doraRecs')) || []; recs = recs.filter(r => r.id !== id); localStorage.setItem('doraRecs', JSON.stringify(recs)); renderHistory(); }
+        function clearAllRecs() { if(confirm("確定要刪除全部紀錄嗎？")) { localStorage.removeItem('doraRecs'); renderHistory(); } }
+        let tmpImg = "";
+        function previewFile() { let file = document.getElementById('dImg').files[0]; if(file){ let r = new FileReader(); r.onload = e => { tmpImg = e.target.result; document.getElementById('dPreview').src = tmpImg; document.getElementById('dPreview').style.display = "block"; }; r.readAsDataURL(file); } }
+        function saveDiary() {
+            let d = document.getElementById('dDate').value; let t = document.getElementById('dText').value;
+            if(!t && !tmpImg) return alert("請寫點內容或上傳照片！");
+            let diaries = JSON.parse(localStorage.getItem('doraDiary')) || [];
+            try { diaries.unshift({id:Date.now(), date:d, text:t, img:tmpImg}); localStorage.setItem('doraDiary', JSON.stringify(diaries)); document.getElementById('dText').value=""; document.getElementById('dPreview').style.display="none"; document.getElementById('dImg').value=""; tmpImg=""; renderDiary(); } catch(e) { alert("圖片太大了！"); }
+        }
+        function renderDiary() {
+            let diaries = JSON.parse(localStorage.getItem('doraDiary')) || [];
+            let div = document.getElementById('diaryList'); div.innerHTML = "";
+            if(diaries.length === 0) { div.innerHTML = "<div style='text-align:center; color:#999; padding:20px;'>還沒有日記喔</div>"; return;}
+            diaries.forEach(d => {
+                let imgHTML = d.img ? `<img src="${d.img}" class="diary-img">` : "";
+                div.innerHTML += `<div class="diary-paper"><div style="color:#aaa; font-size:0.8rem; margin-bottom:10px; border-bottom:1px solid #eee; padding-bottom:5px;">${d.date}</div><div style="line-height:1.6; white-space: pre-wrap;">${d.text}</div>${imgHTML}<div style="text-align:right; margin-top:10px;"><span onclick="delDiary(${d.id})" style="color:#e73b2a; cursor:pointer; font-size:0.8rem; border:1px solid #e73b2a; padding:2px 8px; border-radius:4px;">刪除</span></div></div>`;
+            });
+        }
+        function delDiary(id) { let diaries = JSON.parse(localStorage.getItem('doraDiary')) || []; diaries = diaries.filter(d => d.id !== id); localStorage.setItem('doraDiary', JSON.stringify(diaries)); renderDiary(); }
+    </script>
+</body>
+</html>
