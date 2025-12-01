@@ -246,10 +246,38 @@
             border-radius: 15px; border-left: 8px solid var(--dora-blue);
             box-shadow: 2px 2px 10px var(--shadow-color); position: relative; border: 1px solid var(--card-border);
         }
-        .del-btn { position: absolute; top: 15px; right: 15px; width: 25px; height: 25px; border-radius: 50%; background: var(--input-bg); color: #999; border: none; }
+        
+        /* 刪除按鈕 (絕對置中修正版) */
+        .del-btn { 
+            position: absolute; top: 15px; right: 15px; 
+            width: 32px; height: 32px; /* 稍微加大 */
+            border-radius: 50%; 
+            background: #eee; /* 給一個明顯的背景色 */
+            color: #888; 
+            border: none; 
+            /* Flexbox 絕對置中 */
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            font-size: 1.2rem; 
+            cursor: pointer; 
+            padding: 0;
+            padding-bottom: 2px; /* 微調叉叉垂直位置 */
+            line-height: 1;
+        }
+        .del-btn:hover { background: #ffcccc; color: red; }
+        
         .date-badge { display: inline-block; background: var(--input-bg); padding: 3px 10px; border-radius: 5px; font-size: 0.8rem; margin-bottom: 8px; color: var(--text-color); }
         .data-row { display: flex; justify-content: space-between; margin-top: 5px; }
         .label { color: #888; font-size: 0.8rem; margin-right: 5px; }
+        
+        /* 睡眠時長顯示 (黃色標籤) */
+        .duration-info {
+            background: var(--dora-yellow); color: #5d4037;
+            padding: 4px 10px; border-radius: 15px; font-size: 0.85rem; font-weight: bold;
+            margin-top: 8px; display: inline-block;
+        }
+
         .diary-paper {
             background: var(--card-bg); background-image: radial-gradient(var(--card-border) 1px, transparent 1px);
             background-size: 20px 20px; padding: 25px; border-radius: 5px;
@@ -258,13 +286,13 @@
 
         /* 清除按鈕置底樣式 */
         .clear-zone {
-            margin-top: 40px; padding-top: 20px; border-top: 1px dashed #ccc; text-align: center;
+            margin-top: 60px; padding-top: 30px; border-top: 1px dashed #ddd; text-align: center; opacity: 0.7;
         }
         .clear-btn-bottom {
-            background: #eee; color: #888; font-size: 0.9rem; padding: 10px 30px;
-            border-radius: 50px; font-weight: normal;
+            background: transparent; color: #999; font-size: 0.75rem; padding: 8px 15px;
+            border: 1px solid #ccc; border-radius: 50px; font-weight: normal; width: auto; box-shadow: none;
         }
-        .clear-btn-bottom:hover { background: #ffdede; color: #d63031; }
+        .clear-btn-bottom:hover { background: #fff0f0; color: #ff6b6b; border-color: #ff6b6b; }
 
     </style>
 </head>
@@ -348,6 +376,12 @@
                     <input type="time" id="t2" value="07:00">
                 </div>
             </div>
+
+            <div style="margin-top:15px;">
+                <label class="label">夢境記事 (選填)</label>
+                <textarea id="quickDream" rows="2" placeholder="剛睡醒記得什麼夢嗎？快記下來..."></textarea>
+            </div>
+
             <button class="btn-blue" onclick="quickSave()">存檔並澆水</button>
         </div>
     </div>
@@ -394,7 +428,7 @@
         </div>
     </div>
 
-    <!-- 頁面 4: 日記本 (純文字版) -->
+    <!-- 頁面 4: 日記本 -->
     <div id="diary" class="container">
         <div class="card">
             <h2>撰寫日記</h2>
@@ -412,8 +446,7 @@
             3: { stage1: 'flower_1_1.png', stage2: 'flower_1_2.png', stage3: 'flower_2_4.png' }
         };
 
-        // --- 初始化 ---
-        document.getElementById('recordDate').valueAsDate = new Date(); // 預設今天
+        document.getElementById('recordDate').valueAsDate = new Date();
         document.getElementById('dDate').valueAsDate = new Date();
 
         if(localStorage.getItem('theme') === 'dark') {
@@ -470,22 +503,21 @@
             void area.offsetWidth; 
             area.classList.add('watering');
             
-            // 延遲播放彩蛋動畫
-            setTimeout(() => { playEggAnimation(); }, 2000);
+            if(gardenData.exp === 6) {
+                setTimeout(() => { playEggAnimation(); }, 2000);
+            }
             setTimeout(updateGardenUI, 2500);
         }
 
-        // 修改後的彩蛋動畫：支援 12 張圖 (V16.0)
         function playEggAnimation() {
             const overlay = document.getElementById('eggOverlay');
             const img = document.getElementById('eggAnim');
             overlay.style.display = 'flex';
             
             let frame = 1;
-            // 速度加快一點 (150ms)，讓 12 張圖跑起來更順
             let interval = setInterval(() => {
                 frame++;
-                if(frame > 12) { // 這裡改成 12
+                if(frame > 12) {
                     clearInterval(interval);
                     setTimeout(() => { overlay.style.display = 'none'; }, 1000);
                 } else {
@@ -507,21 +539,30 @@
             }
         }
 
-        // --- 存檔 (選擇日期) ---
+        // --- 存檔 ---
         function quickSave() {
             let dateVal = document.getElementById('recordDate').value;
             let t1 = document.getElementById('t1').value; 
             let t2 = document.getElementById('t2').value;
+            let dreamText = document.getElementById('quickDream').value;
 
             if(!dateVal) return alert("請選擇日期！");
 
             let recs = JSON.parse(localStorage.getItem('doraRecs')) || [];
             recs.unshift({id:Date.now(), date:dateVal, t1, t2});
             localStorage.setItem('doraRecs', JSON.stringify(recs));
+
+            if(dreamText.trim() !== "") {
+                let diaries = JSON.parse(localStorage.getItem('doraDiary')) || [];
+                diaries.unshift({id:Date.now() + 1, date:dateVal, text: "【夢境快記】\n" + dreamText}); 
+                localStorage.setItem('doraDiary', JSON.stringify(diaries));
+                document.getElementById('quickDream').value = ""; 
+                renderDiary();
+            }
+
             triggerWatering();
         }
 
-        // --- 基本功能 ---
         function toggleTheme() {
             let current = document.documentElement.getAttribute('data-theme');
             let icon = document.getElementById('themeIcon');
@@ -557,6 +598,17 @@
             document.getElementById('resNow').innerHTML = `<div>${delay} 分鐘後入睡</div><div style="margin-top:5px; color:#666; font-size:0.9rem;">建議起床時間</div><div style="margin-top:10px;">${html}</div>`; document.getElementById('resNow').style.display = 'block';
         }
 
+        // --- 計算時長 ---
+        function getDuration(d, t1, t2) {
+            let start = new Date(d + 'T' + t1);
+            let end = new Date(d + 'T' + t2);
+            if (end < start) end.setDate(end.getDate() + 1); 
+            let diff = end - start;
+            let hrs = Math.floor(diff / 3600000);
+            let mins = Math.round((diff % 3600000) / 60000);
+            return `共 ${hrs}小時 ${mins}分`;
+        }
+
         // --- 紀錄列表 ---
         function renderHistory() {
             let recs = JSON.parse(localStorage.getItem('doraRecs')) || [];
@@ -564,9 +616,24 @@
             let ul = document.getElementById('historyList'); ul.innerHTML = "";
             let show = f ? recs.filter(r => r.date === f) : recs;
             if(show.length === 0) { ul.innerHTML = "<div style='text-align:center; color:#999; padding:20px;'>這裡空空的，快去睡覺吧！</div>"; return;}
-            show.forEach(r => { ul.innerHTML += `<li class="history-item"><span class="date-badge">${r.date}</span><button class="del-btn" onclick="delRec(${r.id})">×</button><div class="data-row"><div><span class="label">入睡</span> <b>${r.t1}</b></div><div><span class="label">起床</span> <b>${r.t2}</b></div></div></li>`; });
+            
+            show.forEach(r => { 
+                let dur = getDuration(r.date, r.t1, r.t2);
+                ul.innerHTML += `
+                <li class="history-item">
+                    <span class="date-badge">${r.date}</span>
+                    <button class="del-btn" onclick="delRec(${r.id})">×</button>
+                    <div class="data-row">
+                        <div><span class="label">入睡</span> <b>${r.t1}</b></div>
+                        <div><span class="label">起床</span> <b>${r.t2}</b></div>
+                    </div>
+                    <div class="duration-info">⏱️ ${dur}</div>
+                </li>`; 
+            });
         }
         function delRec(id) { 
+            if(!confirm("確定要刪除這筆紀錄嗎？\n(花朵經驗值也會倒扣喔)")) return;
+
             let recs = JSON.parse(localStorage.getItem('doraRecs')) || []; 
             recs = recs.filter(r => r.id !== id); 
             localStorage.setItem('doraRecs', JSON.stringify(recs)); 
